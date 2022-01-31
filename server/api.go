@@ -183,10 +183,16 @@ func StartApiServer(logger *zap.Logger, startupLogger *zap.Logger, db *sql.DB, p
 	if config.GetSocket().TLSCert != nil {
 		// GRPC-Gateway only ever dials 127.0.0.1 so we can be lenient on server certificate validation.
 		certPool := x509.NewCertPool()
+		cert := credentials.TransportCredentials(nil)
 		if !certPool.AppendCertsFromPEM(config.GetSocket().CertPEMBlock) {
 			startupLogger.Fatal("Failed to load PEM certificate from socket SSL certificate file")
 		}
-		cert := credentials.NewTLS(&tls.Config{RootCAs: certPool, InsecureSkipVerify: true})
+		if certPool.AppendCertsFromPEM(config.GetSocket().ICAPEMBlock) && certPool.AppendCertsFromPEM(config.GetSocket().ROOTCAPEMBlock) {
+			cert = credentials.NewTLS(&tls.Config{RootCAs: certPool, InsecureSkipVerify: false})
+		} else {
+			cert = credentials.NewTLS(&tls.Config{RootCAs: certPool, InsecureSkipVerify: true})
+		}
+
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(cert))
 	} else {
 		dialOpts = append(dialOpts, grpc.WithInsecure())

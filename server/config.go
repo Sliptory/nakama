@@ -367,6 +367,8 @@ func CheckConfig(logger *zap.Logger, config Config) map[string]string {
 		if err != nil {
 			logger.Fatal("Error loading SSL certificate key file", zap.Error(err))
 		}
+		icaPEMBlock, icaerr := ioutil.ReadFile(config.GetSocket().SSLIntermediateCA)
+		rootcaPEMBlock, rooterr := ioutil.ReadFile(config.GetSocket().SSLRootCA)
 		cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 		if err != nil {
 			logger.Fatal("Error loading SSL certificate", zap.Error(err))
@@ -376,6 +378,12 @@ func CheckConfig(logger *zap.Logger, config Config) map[string]string {
 		logger.Info("SSL mode enabled")
 		config.GetSocket().CertPEMBlock = certPEMBlock
 		config.GetSocket().KeyPEMBlock = keyPEMBlock
+		if icaerr == nil {
+			config.GetSocket().ICAPEMBlock = icaPEMBlock
+		}
+		if rooterr == nil {
+			config.GetSocket().ROOTCAPEMBlock = rootcaPEMBlock
+		}
 		config.GetSocket().TLSCert = []tls.Certificate{cert}
 	}
 
@@ -483,6 +491,13 @@ func (c *config) Clone() (Config, error) {
 	}
 	nc.Socket.CertPEMBlock = make([]byte, len(c.Socket.CertPEMBlock))
 	copy(nc.Socket.CertPEMBlock, c.Socket.CertPEMBlock)
+
+	nc.Socket.ICAPEMBlock = make([]byte, len(c.Socket.ICAPEMBlock))
+	copy(nc.Socket.ICAPEMBlock, c.Socket.ICAPEMBlock)
+
+	nc.Socket.ROOTCAPEMBlock = make([]byte, len(c.Socket.ROOTCAPEMBlock))
+	copy(nc.Socket.ROOTCAPEMBlock, c.Socket.ROOTCAPEMBlock)
+
 	nc.Socket.KeyPEMBlock = make([]byte, len(c.Socket.KeyPEMBlock))
 	copy(nc.Socket.KeyPEMBlock, c.Socket.KeyPEMBlock)
 	if len(c.Socket.TLSCert) != 0 {
@@ -664,6 +679,11 @@ type SocketConfig struct {
 	CertPEMBlock         []byte            `yaml:"-" json:"-"` // Created by fully reading the file contents of SSLCertificate, not set from input args directly.
 	KeyPEMBlock          []byte            `yaml:"-" json:"-"` // Created by fully reading the file contents of SSLPrivateKey, not set from input args directly.
 	TLSCert              []tls.Certificate `yaml:"-" json:"-"` // Created by processing CertPEMBlock and KeyPEMBlock, not set from input args directly.
+
+	SSLIntermediateCA string `yaml:"ssl_ica" json:"ssl_ica" usage:"Path to Intermediate CA file."`
+	SSLRootCA         string `yaml:"ssl_root" json:"ssl_root" usage:"Path to Root CA file."`
+	ICAPEMBlock       []byte `yaml:"-" json:"-"`
+	ROOTCAPEMBlock    []byte `yaml:"-" json:"-"`
 }
 
 // NewTransportConfig creates a new TransportConfig struct.
@@ -687,6 +707,8 @@ func NewSocketConfig() *SocketConfig {
 		OutgoingQueueSize:    64,
 		SSLCertificate:       "",
 		SSLPrivateKey:        "",
+		SSLIntermediateCA:    "",
+		SSLRootCA:            "",
 	}
 }
 
