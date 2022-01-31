@@ -187,12 +187,11 @@ func StartApiServer(logger *zap.Logger, startupLogger *zap.Logger, db *sql.DB, p
 		if !certPool.AppendCertsFromPEM(config.GetSocket().CertPEMBlock) {
 			startupLogger.Fatal("Failed to load PEM certificate from socket SSL certificate file")
 		}
-		if certPool.AppendCertsFromPEM(config.GetSocket().ICAPEMBlock) && certPool.AppendCertsFromPEM(config.GetSocket().ROOTCAPEMBlock) {
+		if certPool.AppendCertsFromPEM(config.GetSocket().ICAPEMBlock) && certPool.AppendCertsFromPEM(config.GetSocket().RootCAPEMBlock) {
 			cert = credentials.NewTLS(&tls.Config{RootCAs: certPool, InsecureSkipVerify: false})
 		} else {
 			cert = credentials.NewTLS(&tls.Config{RootCAs: certPool, InsecureSkipVerify: true})
 		}
-
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(cert))
 	} else {
 		dialOpts = append(dialOpts, grpc.WithInsecure())

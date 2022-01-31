@@ -367,23 +367,29 @@ func CheckConfig(logger *zap.Logger, config Config) map[string]string {
 		if err != nil {
 			logger.Fatal("Error loading SSL certificate key file", zap.Error(err))
 		}
-		icaPEMBlock, icaerr := ioutil.ReadFile(config.GetSocket().SSLIntermediateCA)
-		rootcaPEMBlock, rooterr := ioutil.ReadFile(config.GetSocket().SSLRootCA)
 		cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 		if err != nil {
 			logger.Fatal("Error loading SSL certificate", zap.Error(err))
+		}
+		if config.GetSocket().SSLIntermediateCA != "" && config.GetSocket().SSLRootCA != "" {
+			logger.Info("INFO: enabling Trust SSL Mode :)")
+			icaPEMBlock, err := ioutil.ReadFile(config.GetSocket().SSLIntermediateCA)
+			if err != nil {
+				logger.Fatal("Error loading SSL IntermediateCA cert file", zap.Error(err))
+			}
+			rootcaPEMBlock, err := ioutil.ReadFile(config.GetSocket().SSLRootCA)
+			if err != nil {
+				logger.Fatal("Error loading SSL RootCA cert file", zap.Error(err))
+			}
+			config.GetSocket().ICAPEMBlock = icaPEMBlock
+			config.GetSocket().RootCAPEMBlock = rootcaPEMBlock
+			logger.Info("INFO: Trust SSL Mode is Active :)")
 		}
 		configWarnings["socket.ssl_certificate"] = "Enabling direct SSL termination is not recommended, use an SSL-capable proxy or load balancer for production!"
 		configWarnings["socket.ssl_private_key"] = "Enabling direct SSL termination is not recommended, use an SSL-capable proxy or load balancer for production!"
 		logger.Info("SSL mode enabled")
 		config.GetSocket().CertPEMBlock = certPEMBlock
 		config.GetSocket().KeyPEMBlock = keyPEMBlock
-		if icaerr == nil {
-			config.GetSocket().ICAPEMBlock = icaPEMBlock
-		}
-		if rooterr == nil {
-			config.GetSocket().ROOTCAPEMBlock = rootcaPEMBlock
-		}
 		config.GetSocket().TLSCert = []tls.Certificate{cert}
 	}
 
@@ -495,8 +501,8 @@ func (c *config) Clone() (Config, error) {
 	nc.Socket.ICAPEMBlock = make([]byte, len(c.Socket.ICAPEMBlock))
 	copy(nc.Socket.ICAPEMBlock, c.Socket.ICAPEMBlock)
 
-	nc.Socket.ROOTCAPEMBlock = make([]byte, len(c.Socket.ROOTCAPEMBlock))
-	copy(nc.Socket.ROOTCAPEMBlock, c.Socket.ROOTCAPEMBlock)
+	nc.Socket.RootCAPEMBlock = make([]byte, len(c.Socket.RootCAPEMBlock))
+	copy(nc.Socket.RootCAPEMBlock, c.Socket.RootCAPEMBlock)
 
 	nc.Socket.KeyPEMBlock = make([]byte, len(c.Socket.KeyPEMBlock))
 	copy(nc.Socket.KeyPEMBlock, c.Socket.KeyPEMBlock)
@@ -683,7 +689,7 @@ type SocketConfig struct {
 	SSLIntermediateCA string `yaml:"ssl_ica" json:"ssl_ica" usage:"Path to Intermediate CA file."`
 	SSLRootCA         string `yaml:"ssl_root" json:"ssl_root" usage:"Path to Root CA file."`
 	ICAPEMBlock       []byte `yaml:"-" json:"-"`
-	ROOTCAPEMBlock    []byte `yaml:"-" json:"-"`
+	RootCAPEMBlock    []byte `yaml:"-" json:"-"`
 }
 
 // NewTransportConfig creates a new TransportConfig struct.
