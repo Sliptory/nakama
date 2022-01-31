@@ -282,7 +282,7 @@ func (n *runtimeJavascriptNakamaModule) binaryToString(r *goja.Runtime) func(goj
 
 // @summary Convert string data to binary.
 // @param str(type=string) The string to be converted.
-// @return result(type=[]byte) The resulting binary data.
+// @return result(type=Uint8Array) The resulting binary data.
 // @return error(error) An optional error value if an error occurred.
 func (n *runtimeJavascriptNakamaModule) stringToBinary(r *goja.Runtime) func(goja.FunctionCall) goja.Value {
 	return func(f goja.FunctionCall) goja.Value {
